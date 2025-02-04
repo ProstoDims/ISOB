@@ -1,0 +1,10 @@
+docker network create --driver bridge --subnet=192.168.1.0/24 my_custom_network
+docker run -d --name container1 --net my_custom_network --ip alpine sleep infinity
+docker run -d --name container2 --net my_custom_network --ip alpine sleep infinity
+docker network inspect my_custom_network
+docker inspect container1
+docker inspect container2
+docker exec -it container1 sh
+ping -c 4 192.168.1.20
+exit
+
