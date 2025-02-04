@@ -1,4 +1,5 @@
 import os
+import random
 
 def ensure_file_exists(file_path, default_content=""):
     if not os.path.exists(file_path):
@@ -13,7 +14,9 @@ def write_file(file_path, content):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(content)
 
-# Шифр сдвига (можно шифровать любые символы)
+def generate_random_shift():
+    return random.randint(1, 25)
+
 def shift_cipher_encrypt(text, shift):
     encrypted = ""
     for char in text:
@@ -31,13 +34,12 @@ def shift_cipher_encrypt(text, shift):
                 base = ord('А')
                 encrypted += chr((ord(char) - base + shift) % 32 + base)
         else:
-            encrypted += chr((ord(char) + shift) % 256)  # Для других символов
+            encrypted += chr((ord(char) + shift) % 256)
     return encrypted
 
 def shift_cipher_decrypt(text, shift):
     return shift_cipher_encrypt(text, -shift)
 
-# Шифр Цезаря (работает только с буквами)
 def caesar_cipher_encrypt(text, shift):
     encrypted = ""
     for char in text:
@@ -55,13 +57,12 @@ def caesar_cipher_encrypt(text, shift):
                 base = ord('А')
                 encrypted += chr((ord(char) - base + shift) % 32 + base)
         else:
-            encrypted += char  # Остальные символы остаются неизменными
+            encrypted += char
     return encrypted
 
 def caesar_cipher_decrypt(text, shift):
     return caesar_cipher_encrypt(text, -shift)
 
-# Шифр Виженера (работает только с буквами)
 def vigenere_cipher_encrypt(text, key):
     encrypted = ""
     key = key.lower()
@@ -78,7 +79,7 @@ def vigenere_cipher_encrypt(text, key):
                 encrypted += chr((ord(char) - base + shift) % 32 + base)
             key_index += 1
         else:
-            encrypted += char  # Остальные символы остаются неизменными
+            encrypted += char
     return encrypted
 
 def vigenere_cipher_decrypt(text, key):
@@ -97,11 +98,19 @@ def vigenere_cipher_decrypt(text, key):
                 decrypted += chr((ord(char) - base + shift) % 32 + base)
             key_index += 1
         else:
-            decrypted += char  # Остальные символы остаются неизменными
+            decrypted += char
     return decrypted
 
 def process_text(cipher_function, text, *args):
     return cipher_function(text, *args)
+
+def save_shift(shift, file_path):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(str(shift))
+
+def read_shift(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return int(file.read().strip())
 
 if __name__ == "__main__":
     file_path = input("Введите путь к файлу: ").strip()
@@ -115,14 +124,18 @@ if __name__ == "__main__":
     choice = input("Введите номер шифра: ").strip()
     
     if choice == "1":
-        shift = int(input("Введите значение сдвига (целое число): ").strip())
+        shift = generate_random_shift()
+        print(f"Используем случайный сдвиг: {shift}")
+        
         encrypted_text = process_text(shift_cipher_encrypt, text, shift)
         write_file(file_path + ".enc", encrypted_text)
+        save_shift(shift, file_path + ".shift") 
         print(f"Зашифрованный текст сохранен в {file_path}.enc")
         
         decrypt_option = input("Хотите дешифровать данные? (да/нет): ").strip().lower()
         if decrypt_option == "да":
-            decrypted_text = process_text(shift_cipher_decrypt, encrypted_text, shift)
+            saved_shift = read_shift(file_path + ".shift")
+            decrypted_text = process_text(shift_cipher_decrypt, encrypted_text, saved_shift)
             write_file(file_path + ".dec", decrypted_text)
             print(f"Дешифрованный текст сохранен в {file_path}.dec")
 
