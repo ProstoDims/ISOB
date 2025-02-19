@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import LoginPage from "./Components/LoginPage";
 import RegistrationPage from "./Components/RegistrationPage";
 import { Navbar, Nav, Container } from "react-bootstrap";
-import { FaSignInAlt, FaUserPlus } from "react-icons/fa";
+import { FaSignInAlt, FaUserPlus, FaCode } from "react-icons/fa";
+import ObfuscationPage from "./Components/ObfuscationPage";
 
 function App() {
   return (
@@ -17,11 +18,19 @@ function App() {
           style={{ borderRadius: "10px" }}
         >
           <Navbar.Brand as={Link} to="/" className="text-light ms-4">
-            SQL INJECTION
+            SQL INJECTION + OBFUSCATE CODE
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="navbar-nav" />
           <Navbar.Collapse id="navbar-nav">
             <Nav className="ms-auto">
+              <Nav.Link
+                as={Link}
+                to="/obfuscate"
+                className="text-light nav-item"
+              >
+                <FaCode className="me-2" />
+                Обфускация кода
+              </Nav.Link>
               <Nav.Link as={Link} to="/" className="text-light nav-item">
                 <FaSignInAlt className="me-2" />
                 Вход
@@ -42,6 +51,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/register" element={<RegistrationPage />} />
+            <Route path="/obfuscate" element={<ObfuscationPage />} />
           </Routes>
         </div>
       </Container>

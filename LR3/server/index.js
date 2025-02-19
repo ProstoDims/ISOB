@@ -19,26 +19,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const TGT_EXPIRATION = 30 * 60 * 1000; // Время жизни TGT — 30 минут
+const TGT_EXPIRATION = 30 * 60 * 1000;
 
-// Функция для генерации случайного ключа
 const generateKey = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-// Хэширование пароля
 const hashPassword = (password) => {
   return crypto.createHash("sha256").update(password).digest("hex");
 };
 
-// Регистрация пользователя
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   const passwordHash = hashPassword(password);
   const key = generateKey();
 
   try {
-    // Проверка, существует ли уже пользователь с таким именем
     const result = await pool.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
@@ -46,7 +42,6 @@ app.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Пользователь уже существует" });
     }
 
-    // Сохранение нового пользователя в базе данных
     await pool.query(
       "INSERT INTO users (username, password_hash, secret_key) VALUES ($1, $2, $3)",
       [username, passwordHash, key]
@@ -58,13 +53,11 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// Аутентификация пользователя
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const passwordHash = hashPassword(password);
 
   try {
-    // Поиск пользователя в базе данных
     const result = await pool.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
@@ -74,16 +67,13 @@ app.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    // Проверка пароля
     if (user.password_hash !== passwordHash) {
       return res.status(401).json({ message: "Неверный пароль" });
     }
 
-    // Генерация TGT (Token Granting Ticket) с уникальным sessionId
     const sessionId = crypto.randomBytes(16).toString("hex");
     const tgtExpiration = Date.now() + TGT_EXPIRATION;
 
-    // Сохранение сессии в базе данных
     await pool.query(
       "INSERT INTO sessions (session_id, username, secret_key, expiration_time) VALUES ($1, $2, $3, $4)",
       [sessionId, username, user.secret_key, tgtExpiration]
@@ -96,12 +86,10 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Проверка сессии (TGT)
 app.post("/verify", async (req, res) => {
   const { sessionId } = req.body;
 
   try {
-    // Проверка существования сессии
     const result = await pool.query(
       "SELECT * FROM sessions WHERE session_id = $1",
       [sessionId]
@@ -112,7 +100,6 @@ app.post("/verify", async (req, res) => {
 
     const session = result.rows[0];
 
-    // Проверка времени истечения TGT
     if (Date.now() > session.expiration_time) {
       return res.status(401).json({ message: "Сессия истекла" });
     }
@@ -126,7 +113,6 @@ app.post("/verify", async (req, res) => {
   }
 });
 
-// Запуск сервера
 const PORT = 8000;
 app.listen(PORT, () => {
   console.log(`Сервер работает на порту ${PORT}`);

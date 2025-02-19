@@ -2,6 +2,8 @@ import express, { json } from "express";
 import pkg from "pg";
 const { Pool } = pkg;
 import cors from "cors";
+import babel from "@babel/core";
+import JavaScriptObfuscator from "javascript-obfuscator";
 
 const app = express();
 app.use(json());
@@ -73,6 +75,70 @@ app.post("/unsafe-register", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Ошибка сервера" });
+  }
+});
+
+app.post("/obfuscate", (req, res) => {
+  const { code, level } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: "No code provided" });
+  }
+
+  let options = {};
+
+  switch (level) {
+    case "low":
+      options = {
+        compact: true,
+        controlFlowFlattening: false,
+        renameGlobals: false,
+        deadCodeInjection: false,
+      };
+      break;
+    case "medium":
+      options = {
+        compact: true,
+        controlFlowFlattening: true,
+        renameGlobals: true,
+        deadCodeInjection: false,
+        stringArray: true,
+        stringArrayEncoding: ["base64"],
+      };
+      break;
+    case "high":
+      options = {
+        compact: true,
+        controlFlowFlattening: true,
+        controlFlowFlatteningThreshold: 1,
+        numbersToExpressions: true,
+        simplify: true,
+        stringArrayShuffle: true,
+        splitStrings: true,
+        stringArrayThreshold: 1,
+        debugProtection: true,
+        debugProtectionInterval: 0,
+      };
+
+      break;
+    default:
+      return res.status(400).json({ error: "Invalid obfuscation level" });
+  }
+
+  try {
+    const transpiledCode = babel.transformSync(code, {
+      presets: ["@babel/preset-react"],
+    }).code;
+
+    const obfuscatedCode = JavaScriptObfuscator.obfuscate(
+      transpiledCode,
+      options
+    ).getObfuscatedCode();
+
+    res.json({ obfuscatedCode });
+  } catch (error) {
+    console.error("Ошибка при обфускации:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
