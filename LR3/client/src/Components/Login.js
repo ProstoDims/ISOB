@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Navigate } from "react-router-dom";
 
 function Login({ setSessionId }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirectToProfile, setRedirectToProfile] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -18,13 +20,21 @@ function Login({ setSessionId }) {
         password,
       });
 
-      setSessionId(response.data.sessionId);
+      const sessionId = response.data.sessionId;
+      localStorage.setItem("sessionId", sessionId);
+      setSessionId(sessionId);
+
+      setRedirectToProfile(true);
     } catch (err) {
       setError("Неверный логин или пароль");
     } finally {
       setLoading(false);
     }
   };
+
+  if (redirectToProfile) {
+    return <Navigate to="/profile" />;
+  }
 
   return (
     <div className="container mt-5">

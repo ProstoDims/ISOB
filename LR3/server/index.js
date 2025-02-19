@@ -35,10 +35,12 @@ app.post("/register", async (req, res) => {
   const key = generateKey();
 
   try {
+    console.log(`Пытаемся зарегистрировать пользователя: ${username}`);
     const result = await pool.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
     if (result.rows.length > 0) {
+      console.log(`Пользователь с именем ${username} уже существует`);
       return res.status(400).json({ message: "Пользователь уже существует" });
     }
 
@@ -46,6 +48,7 @@ app.post("/register", async (req, res) => {
       "INSERT INTO users (username, password_hash, secret_key) VALUES ($1, $2, $3)",
       [username, passwordHash, key]
     );
+    console.log(`Пользователь ${username} зарегистрирован`);
     return res.status(201).json({ message: "Пользователь зарегистрирован" });
   } catch (err) {
     console.error(err);
@@ -58,16 +61,19 @@ app.post("/login", async (req, res) => {
   const passwordHash = hashPassword(password);
 
   try {
+    console.log(`Пытаемся войти пользователю: ${username}`);
     const result = await pool.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
     if (result.rows.length === 0) {
+      console.log(`Пользователь с именем ${username} не найден`);
       return res.status(404).json({ message: "Пользователь не найден" });
     }
 
     const user = result.rows[0];
 
     if (user.password_hash !== passwordHash) {
+      console.log(`Неверный пароль для пользователя: ${username}`);
       return res.status(401).json({ message: "Неверный пароль" });
     }
 
@@ -78,7 +84,7 @@ app.post("/login", async (req, res) => {
       "INSERT INTO sessions (session_id, username, secret_key, expiration_time) VALUES ($1, $2, $3, $4)",
       [sessionId, username, user.secret_key, tgtExpiration]
     );
-
+    console.log(`Пользователь ${username} успешно вошел в систему`);
     return res.status(200).json({ sessionId, expiration: tgtExpiration });
   } catch (err) {
     console.error(err);
@@ -90,26 +96,133 @@ app.post("/verify", async (req, res) => {
   const { sessionId } = req.body;
 
   try {
+    console.log(`Проверка сессии с ID: ${sessionId}`);
     const result = await pool.query(
       "SELECT * FROM sessions WHERE session_id = $1",
       [sessionId]
     );
     if (result.rows.length === 0) {
+      console.log(`Сессия с ID ${sessionId} не найдена`);
       return res.status(404).json({ message: "Сессия не найдена" });
     }
 
     const session = result.rows[0];
 
     if (Date.now() > session.expiration_time) {
+      console.log(`Сессия с ID ${sessionId} истекла`);
       return res.status(401).json({ message: "Сессия истекла" });
     }
 
+    console.log(`Сессия с ID ${sessionId} действительна`);
     return res
       .status(200)
       .json({ message: "Сессия действительна", username: session.username });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Ошибка при проверке сессии" });
+  }
+});
+
+app.post("/getServiceTicket", async (req, res) => {
+  const { sessionId, service } = req.body;
+
+  try {
+    console.log(
+      `Запрос сервисного билета для сессии ${sessionId} и сервиса ${service}`
+    );
+    const result = await pool.query(
+      "SELECT * FROM sessions WHERE session_id = $1",
+      [sessionId]
+    );
+    if (result.rows.length === 0) {
+      console.log(`Сессия с ID ${sessionId} не найдена`);
+      return res.status(404).json({ message: "Сессия не найдена" });
+    }
+
+    const session = result.rows[0];
+
+    if (Date.now() > session.expiration_time) {
+      console.log(`Сессия с ID ${sessionId} истекла`);
+      return res.status(401).json({ message: "Сессия истекла" });
+    }
+
+    const serviceKey = crypto.randomBytes(32).toString("hex");
+
+    const serviceTicket = {
+      sessionId,
+      service,
+      expirationTime: Date.now() + TGT_EXPIRATION,
+      serviceKey,
+    };
+
+    await pool.query(
+      "INSERT INTO service_tickets (session_id, service, ticket_data) VALUES ($1, $2, $3)",
+      [sessionId, service, JSON.stringify(serviceTicket)]
+    );
+    console.log(`Сервисный билет для сервиса ${service} выдан`);
+    return res
+      .status(200)
+      .json({ message: "Сервисный билет выдан", ticket: serviceTicket });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Ошибка при запросе сервисного билета" });
+  }
+});
+
+app.post("/verifyServiceTicket", async (req, res) => {
+  const { sessionId, service, serviceKey } = req.body;
+
+  try {
+    console.log(
+      `Проверка сервисного билета для сессии ${sessionId} и сервиса ${service}`
+    );
+    const sessionResult = await pool.query(
+      "SELECT * FROM sessions WHERE session_id = $1",
+      [sessionId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      console.log(`Сессия с ID ${sessionId} не найдена`);
+      return res.status(404).json({ message: "Сессия не найдена" });
+    }
+
+    const session = sessionResult.rows[0];
+
+    if (Date.now() > session.expiration_time) {
+      console.log(`Сессия с ID ${sessionId} истекла`);
+      return res.status(401).json({ message: "Сессия истекла" });
+    }
+
+    const ticketResult = await pool.query(
+      "SELECT * FROM service_tickets WHERE session_id = $1 AND service = $2",
+      [sessionId, service]
+    );
+
+    if (ticketResult.rows.length === 0) {
+      console.log(`Сервисный билет для сервиса ${service} не найден`);
+      return res.status(404).json({ message: "Сервисный билет не найден" });
+    }
+
+    const serviceTicket = ticketResult.rows[0];
+    if (Date.now() > serviceTicket.expirationTime) {
+      console.log(`Сервисный билет для сервиса ${service} истек`);
+      return res.status(401).json({ message: "Сервисный билет истек" });
+    }
+
+    if (serviceTicket.serviceKey !== serviceKey) {
+      console.log(`Неверный ключ для сервиса ${service}`);
+      return res.status(401).json({ message: "Неверный ключ для сервиса" });
+    }
+
+    console.log(`Доступ разрешен для сервиса ${service}`);
+    return res.status(200).json({ message: "Доступ разрешен" });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Ошибка при проверке сервисного билета" });
   }
 });
 

@@ -1,52 +1,84 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Route,
   Routes,
   Link,
   Navigate,
+  useNavigate,
 } from "react-router-dom";
 import Register from "./Components/Register";
 import Login from "./Components/Login";
+import Profile from "./Components/Profile";
 
 function App() {
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(localStorage.getItem("sessionId"));
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("sessionId");
+    setSessionId(null);
+    navigate("/login");
+  };
+
+  useEffect(() => {
+    if (!sessionId) {
+      navigate("/login");
+    }
+  }, [sessionId, navigate]);
 
   return (
-    <Router>
-      <div className="container">
-        <nav className="navbar navbar-expand-lg navbar-dark bg-primary mt-4">
-          <div className="container-fluid">
-            <Link className="navbar-brand" to="/">
-              Kerberos
-            </Link>
-            <div className="d-flex">
-              <Link to="/login" className="btn btn-outline-light me-2">
-                Авторизация
-              </Link>
-              <Link to="/register" className="btn btn-outline-light">
-                Регистрация
-              </Link>
-            </div>
+    <div className="container">
+      <nav className="navbar navbar-expand-lg navbar-dark bg-primary mt-4">
+        <div className="container-fluid">
+          <Link className="navbar-brand" to="/">
+            Kerberos
+          </Link>
+          <div className="d-flex">
+            {sessionId ? (
+              <>
+                <Link to="/profile" className="btn btn-outline-light me-2">
+                  Профиль
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="btn btn-outline-light"
+                >
+                  Выйти
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-outline-light me-2">
+                  Авторизация
+                </Link>
+                <Link to="/register" className="btn btn-outline-light">
+                  Регистрация
+                </Link>
+              </>
+            )}
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        <Routes>
-          <Route path="/" element={<Navigate to="/register" />} />
+      <Routes>
+        <Route path="/" element={<Navigate to="/register" />} />
+        <Route path="/login" element={<Login setSessionId={setSessionId} />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
 
-          <Route
-            path="/login"
-            element={<Login setSessionId={setSessionId} />}
-          />
-          <Route path="/register" element={<Register />} />
-        </Routes>
-
-        {sessionId && (
-          <div className="alert alert-info mt-3">Session ID: {sessionId}</div>
-        )}
-      </div>
-    </Router>
+      {sessionId && (
+        <div className="alert alert-info mt-3">Session ID: {sessionId}</div>
+      )}
+    </div>
   );
 }
 
-export default App;
+export default function AppWrapper() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
