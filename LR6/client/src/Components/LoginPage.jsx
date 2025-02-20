@@ -52,7 +52,7 @@ function LoginPage() {
               borderRadius: "12px",
               backgroundColor: "#ffffff",
               marginTop: "20px",
-            }} // Added marginTop
+            }}
           >
             <Card.Body>
               <Card.Title className="text-center mb-3 text-info">
@@ -117,7 +117,6 @@ function LoginPage() {
                 </div>
               </Form>
 
-              {/* Table for displaying users */}
               {users.length > 0 && (
                 <div className="mt-4">
                   <h5 className="mb-3 text-center">Список пользователей:</h5>
