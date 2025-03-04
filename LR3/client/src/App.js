@@ -22,7 +22,8 @@ function App() {
   };
 
   useEffect(() => {
-    if (!sessionId) {
+    const allowedRoutes = ["/login", "/register"];
+    if (!sessionId && !allowedRoutes.includes(window.location.pathname)) {
       navigate("/login");
     }
   }, [sessionId, navigate]);
